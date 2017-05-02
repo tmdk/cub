@@ -91,16 +91,21 @@ class CubApplication
     {
         global $argv;
 
-        $gitWorkingDir = realpath(getenv('CUB_WORKING_DIR') ?: getcwd());
-        if ($gitWorkingDir === false) {
-            die('Could not resolve CUB_WORKING_DIR');
+        $workingDir = getenv('CUB_WORKING_DIR') ?: getcwd();
+
+        if ( ! is_dir($workingDir)) {
+            if ( ! mkdir($workingDir)) {
+                die("Could not create working directory $workingDir");
+            }
         }
 
-        $composerJsonDir    = getenv('CUB_COMPOSER_JSON_DIR');
-        $composerWorkingDir = $composerJsonDir === false ? $gitWorkingDir : realpath("$gitWorkingDir/$composerJsonDir");
-        if ($composerWorkingDir === false) {
-            die('Could not resolve CUB_COMPOSER_JSON_DIR');
+        $gitWorkingDir = realpath($workingDir);
+        if ($gitWorkingDir === false) {
+            die("Could not resolve real path of working directory $gitWorkingDir");
         }
+
+        $composerJsonDir    = getenv('CUB_COMPOSER_JSON_DIR') ?: '';
+        $composerWorkingDir = rtrim("$gitWorkingDir/$composerJsonDir", '/');
 
         $repoUri      = getenv('CUB_REPO') ?: null;
         $verbose      = getenv('CUB_VERBOSE') ?: false;
