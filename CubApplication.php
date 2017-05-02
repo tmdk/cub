@@ -137,10 +137,8 @@ class CubApplication
 
         $this->resetRepoToOrigin();
 
-        /** @var boolean $packageUpdated */
-        /** @var PackageUpdate $update */
         try {
-            list($packageUpdated, $update) = $this->tryUpdatePackage($packageName);
+            $update = $this->tryUpdatePackage($packageName);
         } catch (\Exception $exception) {
             $this->error("Failed to update package $packageName: {$exception->getMessage()}");
 
@@ -150,7 +148,7 @@ class CubApplication
         $commitCreated = false;
         $commitPushed  = false;
 
-        if ($packageUpdated) {
+        if ($update->hasChanges()) {
 
             try {
                 $commitCreated = $this->createCommit($update);
@@ -162,7 +160,7 @@ class CubApplication
                 try {
                     $commitPushed = $this->tryPushCommit();
 
-                    $this->verbose("Pushed update of $packageName ($update->oldVersion} to {$update->newVersion}");
+                    $this->verbose("Pushed update of $packageName ({$update->getOldVersion()}) to {$update->getNewVersion()}");
                 } catch (\Exception $exception) {
                     $this->error("Failed to push update of $packageName: {$exception->getMessage()}");
 
@@ -176,7 +174,7 @@ class CubApplication
         $this->verbose('Resetting and cleaning repository');
         $this->resetRepoToOrigin();
 
-        return ( ! $packageUpdated || $commitPushed === true) ? 0 : 1;
+        return ( ! $update->hasChanges() || $commitPushed === true) ? 0 : 1;
     }
 
     /** @param string $message */
@@ -194,7 +192,7 @@ class CubApplication
     /**
      * @param $packageName
      *
-     * @return array
+     * @return PackageUpdate
      * @throws \Exception
      */
     function tryUpdatePackage($packageName)
@@ -208,7 +206,7 @@ class CubApplication
 
         $packageBefore = $this->findPackageLockData($locker, $packageName);
 
-        $noUpdate = [false, PackageUpdate::empty()];
+        $unchanged = PackageUpdate::unchanged();
 
         $install
             ->setDryRun(false)
@@ -247,15 +245,9 @@ class CubApplication
                 throw new \Exception('Could not determine new package version (lock data not found)');
             }
 
-            if ($oldVersion === $newVersion) {
-                return $noUpdate;
-            }
-
-            $update = new PackageUpdate($packageName, $oldVersion, $newVersion);
-
-            return [true, $update];
+            return new PackageUpdate($packageBefore, $packageAfter);
         } else {
-            return $noUpdate;
+            return $unchanged;
         }
     }
 
@@ -298,7 +290,7 @@ class CubApplication
     function createCommit(PackageUpdate $update)
     {
         $this->repository->add($this->composerLockFile);
-        $this->repository->commit("Updating {$update->packageName} ({$update->oldVersion}) to {$update->newVersion}");
+        $this->repository->commit("Updating {$update->packageName} ({$update->getOldVersion()}) to {$update->getNewVersion()}");
 
         return true;
     }
@@ -344,24 +336,56 @@ class PackageUpdate
     public $oldVersion;
     /** @var  string */
     public $newVersion;
+    /** @var  string */
+    public $oldSourceRef;
+    /** @var  string */
+    public $newSourceRef;
 
     /**
      * PackageUpdate constructor.
      *
-     * @param string $packageName
-     * @param string $oldVersion
-     * @param string $newVersion
+     * @param array $oldLockData
+     * @param array $newLockData
      */
-    public function __construct($packageName, $oldVersion, $newVersion)
+    public function __construct($oldLockData, $newLockData)
     {
-        $this->packageName = $packageName;
-        $this->oldVersion  = $oldVersion;
-        $this->newVersion  = $newVersion;
+        $this->packageName  = $oldLockData['name'];
+        $this->oldVersion   = $oldLockData['version'];
+        $this->oldSourceRef = $oldLockData['source']['reference'];
+        $this->newVersion   = $newLockData['version'];
+        $this->newSourceRef = $newLockData['source']['reference'];
     }
 
-    static function empty()
+    function hasChanges()
     {
-        return new self(null, null, null);
+        return $this->oldSourceRef !== $this->newSourceRef;
+    }
+
+    protected function isVersioned($version)
+    {
+        return strncmp($version, 'dev-', 4) !== 0;
+    }
+
+    static function unchanged()
+    {
+        $empty = ['name' => '', 'version' => '', 'source' => ['reference' => '']];
+
+        return new self($empty, $empty);
+    }
+
+    function getNewVersion()
+    {
+        return $this->isVersioned($this->newVersion) ? $this->newVersion : $this->shortRef($this->newSourceRef);
+    }
+
+    function getOldVersion()
+    {
+        return $this->isVersioned($this->oldVersion) ? $this->oldVersion : $this->shortRef($this->oldSourceRef);
+    }
+
+    protected function shortRef($ref)
+    {
+        return substr($ref, 0, 7);
     }
 }
 
