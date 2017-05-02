@@ -300,7 +300,7 @@ class CubApplication
      */
     function tryPushCommit()
     {
-        $this->repository->push('origin', $this->branch);
+        $this->repository->push('-u', 'origin', $this->branch);
 
         return true;
     }
