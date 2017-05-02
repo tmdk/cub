@@ -91,24 +91,24 @@ class CubApplication
     {
         global $argv;
 
-        $gitWorkingDir = realpath(getenv('WORKING_DIR') ?: getcwd());
+        $gitWorkingDir = realpath(getenv('CUB_WORKING_DIR') ?: getcwd());
         if ($gitWorkingDir === false) {
-            die('Could not resolve WORKING_DIR');
+            die('Could not resolve CUB_WORKING_DIR');
         }
 
-        $composerJsonDir    = getenv('COMPOSER_JSON_DIR');
+        $composerJsonDir    = getenv('CUB_COMPOSER_JSON_DIR');
         $composerWorkingDir = $composerJsonDir === false ? $gitWorkingDir : realpath("$gitWorkingDir/$composerJsonDir");
         if ($composerWorkingDir === false) {
-            die('Could not resolve COMPOSER_JSON_DIR');
+            die('Could not resolve CUB_COMPOSER_JSON_DIR');
         }
 
-        $repoUri      = getenv('REPO') ?: null;
-        $verbose      = getenv('VERBOSE') ?: false;
-        $preferStable = getenv('PREFER_STABLE') ?: true;
-        $branch       = getenv('BRANCH') ?: 'develop';
+        $repoUri      = getenv('CUB_REPO') ?: null;
+        $verbose      = getenv('CUB_VERBOSE') ?: false;
+        $preferStable = getenv('CUB_PREFER_STABLE') ?: true;
+        $branch       = getenv('CUB_BRANCH') ?: 'develop';
 
         if ($repoUri === null) {
-            die('Environment variable REPO is undefined.');
+            die('Environment variable CUB_REPO is undefined.');
         }
 
         if ( ! isset($argv[1])) {
