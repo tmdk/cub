@@ -137,10 +137,10 @@ class CubApplication
 
         $this->resetRepoToOrigin();
 
-        /** @var boolean $updated */
+        /** @var boolean $packageUpdated */
         /** @var PackageUpdate $update */
         try {
-            list($updated, $update) = $this->tryUpdatePackage($packageName);
+            list($packageUpdated, $update) = $this->tryUpdatePackage($packageName);
         } catch (\Exception $exception) {
             $this->error("Failed to update package $packageName: {$exception->getMessage()}");
 
@@ -150,7 +150,7 @@ class CubApplication
         $commitCreated = false;
         $commitPushed  = false;
 
-        if ($updated) {
+        if ($packageUpdated) {
 
             try {
                 $commitCreated = $this->createCommit($update);
@@ -176,7 +176,7 @@ class CubApplication
         $this->verbose('Resetting and cleaning repository');
         $this->resetRepoToOrigin();
 
-        return $commitPushed === true ? 0 : 1;
+        return ( ! $packageUpdated || $commitPushed === true) ? 0 : 1;
     }
 
     /** @param string $message */
